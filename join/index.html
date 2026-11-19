@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark">
+<title>Join a game — The Barricade</title>
+<style>
+  :root { --bg:#07111f; --surface:#0e1d33; --line:#1f3352; --text:#e8eef8; --muted:#9fb0c8; --gold:#fbbf24; --on-gold:#1c1404; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body { font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Arabic", sans-serif;
+         min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+  main { width: 100%; max-width: 420px; text-align: center; }
+  img { width: 88px; height: 88px; border-radius: 22px; }
+  h1 { font-size: 22px; margin: 12px 0 4px; }
+  p { color: var(--muted); margin: 6px 0; }
+  .code { direction: ltr; font-size: 40px; font-weight: 800; letter-spacing: 8px; color: var(--gold);
+          background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 8px; margin: 18px 0; }
+  .btn { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; margin: 10px 0;
+         border-radius: 14px; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; border: 1px solid var(--line);
+         background: var(--surface); color: var(--text); }
+  .btn.gold { background: var(--gold); color: var(--on-gold); border-color: var(--gold); }
+  ol { text-align: start; color: var(--muted); padding-inline-start: 22px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <img src="../icon.png" alt="">
+  <h1 id="title">The Barricade</h1>
+  <div id="ok" hidden>
+    <p id="invited"></p>
+    <div class="code" id="code"></div>
+    <a class="btn gold" id="open" href="#"></a>
+    <button class="btn" id="copy" type="button"></button>
+    <ol>
+      <li id="s1"></li>
+      <li id="s2"></li>
+      <li id="s3"></li>
+    </ol>
+    <a class="btn" id="store" href="https://play.google.com/store/apps/details?id=com.barricade.game" rel="noopener"></a>
+  </div>
+  <p id="bad" hidden></p>
+</main>
+<script>
+(function () {
+  var STORE = 'https://play.google.com/store/apps/details?id=com.barricade.game';
+  var T = {
+    en: { invited: 'You are invited to a match. Room code:', open: 'Open in the game', copy: 'Copy code', copied: 'Copied',
+          s1: 'Install The Barricade from Google Play.', s2: 'Open the game and tap Play online.', s3: 'Enter the room code and tap Join.',
+          store: 'Get it on Google Play', bad: 'This invite link is not valid. Ask your friend to send it again.' },
+    ar: { invited: 'وصلتك دعوة إلى مباراة. رمز الغرفة:', open: 'افتح في اللعبة', copy: 'انسخ الرمز', copied: 'تم النسخ',
+          s1: 'ثبّت The Barricade من Google Play.', s2: 'افتح اللعبة واضغط «العب أونلاين».', s3: 'أدخل رمز الغرفة واضغط «دخول».',
+          store: 'حمّلها من Google Play', bad: 'رابط الدعوة غير صالح. اطلب من صديقك إرساله مرة أخرى.' },
+    zh: { invited: '你收到一场比赛的邀请。房间码：', open: '在游戏中打开', copy: '复制房间码', copied: '已复制',
+          s1: '从 Google Play 安装 The Barricade。', s2: '打开游戏，点“在线对战”。', s3: '输入房间码并点“加入”。',
+          store: '在 Google Play 下载', bad: '邀请链接无效，请让好友重新发送。' }
+  };
+  var nav = (navigator.language || 'en').toLowerCase();
+  var lang = nav.indexOf('ar') === 0 ? 'ar' : nav.indexOf('zh') === 0 ? 'zh' : 'en';
+  var t = T[lang];
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  var $ = function (id) { return document.getElementById(id); };
+
+  // only a well-formed room code is ever used (same alphabet as the app)
+  var raw = new URLSearchParams(location.search).get('c') || '';
+  var code = raw.trim().toUpperCase();
+  if (!/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/.test(code)) {
+    $('bad').textContent = t.bad; $('bad').hidden = false; return;
+  }
+
+  $('invited').textContent = t.invited;
+  $('code').textContent = code;
+  $('copy').textContent = t.copy;
+  $('s1').textContent = t.s1; $('s2').textContent = t.s2; $('s3').textContent = t.s3;
+  $('store').textContent = t.store;
+  $('open').textContent = t.open;
+  $('ok').hidden = false;
+
+  var android = /android/i.test(navigator.userAgent);
+  var appUrl = android
+    ? 'intent://join/' + code + '#Intent;scheme=barricade;package=com.barricade.game;S.browser_fallback_url=' + encodeURIComponent(STORE) + ';end'
+    : 'barricade://join/' + code;
+  $('open').href = appUrl;
+
+  $('copy').addEventListener('click', function () {
+    var done = function () { $('copy').textContent = t.copied; setTimeout(function () { $('copy').textContent = t.copy; }, 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, function () {});
+  });
+
+  // On Android, try opening the game straight away (the button stays if the browser blocks it).
+  // Not inside in-app browsers (Instagram, Facebook, …): many can't open intent:// links and would
+  // replace this page, and the code on it, with an error.
+  var inApp = /; wv\)|FBAN|FBAV|Instagram|Line\/|Snapchat|musical_ly|TikTok|Twitter/i.test(navigator.userAgent);
+  if (android && !inApp) setTimeout(function () { location.href = appUrl; }, 250);
+})();
+</script>
+</body>
+</html>
